@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Tags on Blog</title>
+    <link>https://voje.github.io/blog/tags/</link>
+    <description>Recent content in Tags on Blog</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <copyright>Kristjan Voje 2021</copyright>
+    <lastBuildDate>Mon, 18 Jan 2021 23:04:03 +0100</lastBuildDate><atom:link href="https://voje.github.io/blog/tags/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>direct return</title>
+      <link>https://voje.github.io/blog/tags/direct-return/</link>
+      <pubDate>Mon, 18 Jan 2021 23:04:03 +0100</pubDate>
+      
+      <guid>https://voje.github.io/blog/tags/direct-return/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>dr</title>
+      <link>https://voje.github.io/blog/tags/dr/</link>
+      <pubDate>Mon, 18 Jan 2021 23:04:03 +0100</pubDate>
+      
+      <guid>https://voje.github.io/blog/tags/dr/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>linux virtual server</title>
+      <link>https://voje.github.io/blog/tags/linux-virtual-server/</link>
+      <pubDate>Mon, 18 Jan 2021 23:04:03 +0100</pubDate>
+      
+      <guid>https://voje.github.io/blog/tags/linux-virtual-server/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>lvs</title>
+      <link>https://voje.github.io/blog/tags/lvs/</link>
+      <pubDate>Mon, 18 Jan 2021 23:04:03 +0100</pubDate>
+      
+      <guid>https://voje.github.io/blog/tags/lvs/</guid>
+      <description></description>
+    </item>
+    
+  </channel>
+</rss>

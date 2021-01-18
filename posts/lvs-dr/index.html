@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  
+    <title>LVS DR :: Blog</title>
+  
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="LVS DR Linux Virtual Server Direct Return
+We&amp;rsquo;re using a four server scenario: client, load balancer, backend server 1, backend server 2.
+Lost an hour trying to get ansible.openstack to work&amp;hellip; not sure why the error feedback is so slow but ended up using bash instead.
+2029 for server in $(openstack server list | grep voje-test | awk &amp;#39;{ print $4 }&amp;#39;); do echo $server; openstack server delete $server; done 2031 openstack server create --image focal-server-cloudimg-2021-01-05." />
+<meta name="keywords" content="lvs, dr, linux virtual server, direct return" />
+<meta name="robots" content="noodp" />
+<link rel="canonical" href="https://voje.github.io/blog/posts/lvs-dr/" />
+
+
+
+
+<link rel="stylesheet" href="https://voje.github.io/blog/assets/style.css">
+
+
+
+
+
+
+<link rel="apple-touch-icon" href="https://voje.github.io/blog/img/apple-touch-icon-192x192.png">
+
+  <link rel="shortcut icon" href="https://voje.github.io/blog/img/favicon/orange.png">
+
+
+
+<meta name="twitter:card" content="summary" />
+
+  
+    <meta name="twitter:site" content="" />
+  
+    <meta name="twitter:creator" content="" />
+
+
+
+<meta property="og:locale" content="en" />
+<meta property="og:type" content="article" />
+<meta property="og:title" content="LVS DR">
+<meta property="og:description" content="Setting up Linux Virtual Server with Direct Return" />
+<meta property="og:url" content="https://voje.github.io/blog/posts/lvs-dr/" />
+<meta property="og:site_name" content="Blog" />
+
+  <meta property="og:image" content="https://voje.github.io/blog">
+
+<meta property="og:image:width" content="2048">
+<meta property="og:image:height" content="1024">
+
+
+  <meta property="article:published_time" content="2021-01-18 23:04:03 &#43;0100 CET" />
+
+
+
+
+
+
+
+
+
+
+
+
+</head>
+<body class="orange">
+
+
+<div class="container full headings--one-size">
+
+  <header class="header">
+  <div class="header__inner">
+    <div class="header__logo">
+      <a href="/">
+  <div class="logo">
+    Blog
+  </div>
+</a>
+
+    </div>
+    
+      <div class="menu-trigger">menu</div>
+    
+  </div>
+  
+    <nav class="menu">
+  <ul class="menu__inner menu__inner--desktop">
+    
+      
+        
+          <li><a href="/blog/about">About</a></li>
+        
+      
+      
+    
+
+    
+  </ul>
+
+  <ul class="menu__inner menu__inner--mobile">
+    
+      
+        <li><a href="/blog/about">About</a></li>
+      
+    
+    
+  </ul>
+</nav>
+
+  
+</header>
+
+
+  <div class="content">
+    
+<div class="post">
+  <h1 class="post-title">
+    <a href="https://voje.github.io/blog/posts/lvs-dr/">LVS DR</a></h1>
+  <div class="post-meta">
+    
+      <span class="post-date">
+        2021-01-18 
+      </span>
+    
+    
+    <span class="post-author">:: Kristjan Voje</span>
+    
+  </div>
+
+  
+  <span class="post-tags">
+    
+    #<a href="https://voje.github.io/blog/tags/lvs/">lvs</a>&nbsp;
+    
+    #<a href="https://voje.github.io/blog/tags/dr/">dr</a>&nbsp;
+    
+    #<a href="https://voje.github.io/blog/tags/linux-virtual-server/">linux virtual server</a>&nbsp;
+    
+    #<a href="https://voje.github.io/blog/tags/direct-return/">direct return</a>&nbsp;
+    
+  </span>
+  
+
+  
+
+  
+
+  <div class="post-content"><div>
+        <h1 id="lvs-dr">LVS DR<a href="#lvs-dr" class="hanchor" ariaLabel="Anchor">&#8983;</a> </h1>
+<p>Linux Virtual Server Direct Return</p>
+<p>We&rsquo;re using a four server scenario: client, load balancer, backend server 1, backend server 2.</p>
+<p>Lost an hour trying to get ansible.openstack to work&hellip; not sure why the error feedback is so slow but ended up using bash instead.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash"> <span style="color:#ae81ff">2029</span>  <span style="color:#66d9ef">for</span> server in <span style="color:#66d9ef">$(</span>openstack server list | grep voje-test | awk <span style="color:#e6db74">&#39;{ print $4 }&#39;</span><span style="color:#66d9ef">)</span>; <span style="color:#66d9ef">do</span> echo $server; openstack server delete $server; <span style="color:#66d9ef">done</span>
+ <span style="color:#ae81ff">2031</span>  openstack server create --image focal-server-cloudimg-2021-01-05.img --flavor m1.tiny --key-name k-cloud-key --network mgmt --network air voje-test-client
+ <span style="color:#ae81ff">2032</span>  openstack server create --image focal-server-cloudimg-2021-01-05.img --flavor m1.tiny --key-name k-cloud-key --network air voje-test-lb
+ <span style="color:#ae81ff">2033</span>  openstack server create --image focal-server-cloudimg-2021-01-05.img --flavor m1.tiny --key-name k-cloud-key --network air voje-test-bs-1
+ <span style="color:#ae81ff">2034</span>  openstack server create --image focal-server-cloudimg-2021-01-05.img --flavor m1.tiny --key-name k-cloud-key --network air voje-test-bs-2
+</code></pre></div><p>Manually add a floating IP to the mgmt interface of <code>voje-test-client</code>.</p>
+<p>Subnet: <code>Air 192.168.18.0/24</code></p>
+<p>Server list:</p>
+<pre><code>client
+voje-test-client
+192.168.18.15
+172.29.68.5  # external IP (entrypoint)
+
+LB
+voje-test-lb
+192.168.18.8
+
+BS1
+voje-test-bs-1
+192.168.18.13
+
+BS2
+voje-test-bs-2
+192.168.18.11
+</code></pre><p>VMs ready, time to set up some backend webservers.</p>
+<p>bs1</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">echo <span style="color:#e6db74">&#34;Hello from backend server 1&#34;</span> &gt; index.html <span style="color:#f92672">&amp;&amp;</span> python3 -m http.server <span style="color:#ae81ff">8080</span> &amp;
+</code></pre></div><p>bs2</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">echo <span style="color:#e6db74">&#34;Hello from backend server 2&#34;</span> &gt; index.html <span style="color:#f92672">&amp;&amp;</span> python3 -m http.server <span style="color:#ae81ff">8080</span> &amp;
+</code></pre></div><p>client</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">ubuntu@voje-test-client:~$ curl voje-test-bs-1:8080
+Hello from backend server <span style="color:#ae81ff">1</span>
+ubuntu@voje-test-client:~$ curl voje-test-bs-2:8080
+Hello from backend server <span style="color:#ae81ff">2</span>
+</code></pre></div><p>Backend servers are (almost) ready.</p>
+<h2 id="setting-up-direct-server-routing">Setting up direct server routing<a href="#setting-up-direct-server-routing" class="hanchor" ariaLabel="Anchor">&#8983;</a> </h2>
+<p><a href="https://www.server-world.info/en/note?os=Ubuntu_16.04&amp;p=lvs&amp;f=1">https://www.server-world.info/en/note?os=Ubuntu_16.04&amp;p=lvs&amp;f=1</a></p>
+<h3 id="ipvsadm">ipvsadm<a href="#ipvsadm" class="hanchor" ariaLabel="Anchor">&#8983;</a> </h3>
+<p>Install virtual server on the loadbalancer VM.</p>
+<p>lb</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">sudo apt-get install ipvsadm
+sudo vim /etc/default/ipvsadm
+</code></pre></div><h3 id="vip">VIP<a href="#vip" class="hanchor" ariaLabel="Anchor">&#8983;</a> </h3>
+<p>Set up virtual IP address.<br>
+The guide above is for /etc/network/interfaces, we have netplan.</p>
+<p>Our VIP will be <code>192.168.18.42</code>.</p>
+<p>Hmm netplan doesn&rsquo;t define a new interface. Let&rsquo;s see if this causes problems or not.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">network:
+  version: <span style="color:#ae81ff">2</span>
+  renderer: networkd
+  ethernets:
+    enp7s0f0:
+      addresses: <span style="color:#f92672">[</span>aaa.aaa.aaa.aaa/24, bbb.bbb.bbb/24<span style="color:#f92672">]</span>
+      gateway4: aaa.aaa.aaa.1
+</code></pre></div><p>This is my netplan config on loadbalancer:</p>
+<pre><code>ubuntu@voje-test-lb:~$ cat /etc/netplan/50-cloud-init.yaml
+# This file is generated from information provided by the datasource.  Changes
+# to it will not persist across an instance reboot.  To disable cloud-init's
+# network configuration capabilities, write a file
+# /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg with the following:
+# network: {config: disabled}
+network:
+    version: 2
+    ethernets:
+        ens3:
+            addresses: [192.168.18.8/24, 192.168.18.42/24]
+            gateway4: 192.168.18.1
+        ens7:
+            dhcp4: true
+</code></pre><p>Make sure to run <code>netplan try</code> before anything else so we don&rsquo;t lock ourselves out.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">ubuntu@voje-test-lb:~$ ip a
+1: lo: &lt;LOOPBACK,UP,LOWER_UP&gt; mtu <span style="color:#ae81ff">65536</span> qdisc noqueue state UNKNOWN group default qlen <span style="color:#ae81ff">1000</span>
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host
+       valid_lft forever preferred_lft forever
+2: ens3: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu <span style="color:#ae81ff">1500</span> qdisc fq_codel state UP group default qlen <span style="color:#ae81ff">1000</span>
+    link/ether fa:16:3e:ab:32:34 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.18.8/24 brd 192.168.18.255 scope global ens3
+       valid_lft forever preferred_lft forever
+    inet 192.168.18.42/24 brd 192.168.18.255 scope global secondary ens3
+       valid_lft forever preferred_lft forever
+    inet6 fe80::f816:3eff:feab:3234/64 scope link
+       valid_lft forever preferred_lft forever
+3: ens7: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu <span style="color:#ae81ff">1500</span> qdisc fq_codel state UP group default qlen <span style="color:#ae81ff">1000</span>
+    link/ether fa:16:3e:61:e8:a6 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.254.5/24 brd 192.168.254.255 scope global dynamic ens7
+       valid_lft 86023sec preferred_lft 86023sec
+    inet6 fe80::f816:3eff:fe61:e8a6/64 scope link
+       valid_lft forever preferred_lft forever
+</code></pre></div><p>I can ping the .42 IP from client right now.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">ubuntu@voje-test-client:~$ arp
+Address                  HWtype  HWaddress           Flags Mask            Iface
+voje-test-bs-2           ether   fa:16:3e:0c:1e:a0   C                     ens4
+voje-test-lb             ether   fa:16:3e:ab:32:34   C                     ens4
+voje-test-bs-1           ether   fa:16:3e:37:85:05   C                     ens4
+192.168.18.42            ether   fa:16:3e:ab:32:34   C                     ens4
+</code></pre></div><p>Here&rsquo;s the catch: we need to add this virtual IP to all of the nodes (so LB, BS1 and BS2).<br>
+Only LB should be propagated as the owner of the VIP on the subnet though &ndash; the ARP tables on all of the subnet
+machines should map <code>.42</code> &ndash;&gt; <code>MAC(LB)</code> and NOT to <code>MAC(SB1,2)</code>.</p>
+<p>On BS1 and BS2:</p>
+<pre><code>iptables -t nat -A PREROUTING -d 192.168.18.42 -j REDIRECT 
+</code></pre><p>Quickly checked&hellip; this should add a rule to the <code>nat</code> table which says to redirect all packets destined for <code>192.168.18.42</code> back to our own machine.<br>
+This will probably mute the ARP broadcasts for our virtual IP.<br>
+TODO: iptables deep dive</p>
+<p>On LB</p>
+<pre><code>sudo ipvsadm -C  # clear rules
+sudo ipvsadm -A -t 192.168.18.42:8080 -s rr  # add virtual server
+sudo ipvsadm -a -t 192.168.18.42:8080 -r 192.168.18.13 -g  # add backend server
+sudo ipvsadm -a -t 192.168.18.42:8080 -r 192.168.18.11 -g  # add backend server
+</code></pre><div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">ubuntu@voje-test-lb:~$ ipvsadm -l
+Can<span style="color:#960050;background-color:#1e0010">&#39;</span>t initialize ipvs: Permission denied <span style="color:#f92672">(</span>you must be root<span style="color:#f92672">)</span>
+Are you sure that IP Virtual Server is built in the kernel or as module?
+ubuntu@voje-test-lb:~$ sudo ipvsadm -l
+IP Virtual Server version 1.2.1 <span style="color:#f92672">(</span>size<span style="color:#f92672">=</span>4096<span style="color:#f92672">)</span>
+Prot LocalAddress:Port Scheduler Flags
+  -&gt; RemoteAddress:Port           Forward Weight ActiveConn InActConn
+TCP  192.168.18.42:http-alt rr
+  -&gt; 192.168.18.11:http-alt       Route   <span style="color:#ae81ff">1</span>      <span style="color:#ae81ff">0</span>          <span style="color:#ae81ff">0</span>
+  -&gt; 192.168.18.13:http-alt       Route   <span style="color:#ae81ff">1</span>      <span style="color:#ae81ff">0</span>          <span style="color:#ae81ff">0</span>
+ubuntu@voje-test-lb:~$
+</code></pre></div><p>Save the rules</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">ubuntu@voje-test-lb:~$ sudo ipvsadm -S | sudo tee -a /etc/ipvsadm.rules
+
+-A -t 192.168.18.42:http-alt -s rr
+-a -t 192.168.18.42:http-alt -r 192.168.18.11:http-alt -g -w <span style="color:#ae81ff">1</span>
+-a -t 192.168.18.42:http-alt -r 192.168.18.13:http-alt -g -w <span style="color:#ae81ff">1</span>
+</code></pre></div><p>After setting the VIM on BS1, half of the replies go through (obviously).<br>
+I&rsquo;m assuming ARP tables are going to be problematic now.</p>
+<h3 id="arp">ARP<a href="#arp" class="hanchor" ariaLabel="Anchor">&#8983;</a> </h3>
+<p>Clear ARP cache on a node:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">arp -n
+ip -s -s neigh flush all
+arp -n
+</code></pre></div><div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">root@voje-test-client:~# arp -n
+Address                  HWtype  HWaddress           Flags Mask            Iface
+192.168.18.11            ether   fa:16:3e:0c:1e:a0   C                     ens4        <span style="color:#75715e"># BS2</span>
+192.168.18.8             ether   fa:16:3e:ab:32:34   C                     ens4        <span style="color:#75715e"># LB</span>
+192.168.18.13            ether   fa:16:3e:37:85:05   C                     ens4        <span style="color:#75715e"># BS1</span>
+</code></pre></div><p>Ok now so BS1 should have <code>iptables</code> configured so it doesn&rsquo;t broadcast arp while BS2 hasn&rsquo;t been configured properly.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">192.168.18.42            ether   fa:16:3e:0c:1e:a0   C                     ens4
+</code></pre></div><p>So we&rsquo;re getting answers directly from BS2 which is not OK.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">root@voje-test-client:~# curl 192.168.18.42:8080
+Hello from backend server <span style="color:#ae81ff">2</span>
+</code></pre></div><p>Adding iptables setting to BS2</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">iptables -t nat -A PREROUTING -d 192.168.18.42 -j REDIRECT 
+</code></pre></div><p>Trying the <code>arptables</code> method on all backend servers:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">ubuntu@voje-test-bs-2:~/serve$ sudo arptables -A OUTPUT -s 192.168.18.42 -j mangle --mangle-ip-s 192.168.18.8
+ubuntu@voje-test-bs-2:~/serve$ sudo arptables -A INPUT -d 192.168.18.42 -j DROP
+ubuntu@voje-test-bs-2:~/serve$ sudo arptables -L
+Chain INPUT <span style="color:#f92672">(</span>policy ACCEPT<span style="color:#f92672">)</span>
+-j DROP -d voje-test-bs-2
+
+Chain OUTPUT <span style="color:#f92672">(</span>policy ACCEPT<span style="color:#f92672">)</span>
+-j mangle -s voje-test-bs-2 --mangle-ip-s 192.168.18.8
+</code></pre></div><p>Loadbalancer seems to be working now.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">root@voje-test-client:~# curl 192.168.18.42:8080
+Hello from backend server <span style="color:#ae81ff">2</span>
+root@voje-test-client:~# curl 192.168.18.42:8080
+Hello from backend server <span style="color:#ae81ff">1</span>
+root@voje-test-client:~# curl 192.168.18.42:8080
+Hello from backend server <span style="color:#ae81ff">2</span>
+root@voje-test-client:~# curl 192.168.18.42:8080
+Hello from backend server <span style="color:#ae81ff">1</span>
+root@voje-test-client:~#
+</code></pre></div><p>Let&rsquo;s make sure the return packets aren&rsquo;t routed via LB.</p>
+<p>Running two http requests on client:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">ubuntu@voje-test-client:~$ curl 192.168.18.42:8080
+Hello from backend server <span style="color:#ae81ff">1</span>
+ubuntu@voje-test-client:~$ curl 192.168.18.42:8080
+Hello from backend server <span style="color:#ae81ff">2</span>
+</code></pre></div><p>tshark on client</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">ubuntu@voje-test-client:~$ sudo tshark -i ens4
+Running as user <span style="color:#e6db74">&#34;root&#34;</span> and group <span style="color:#e6db74">&#34;root&#34;</span>. This could be dangerous.
+Capturing on <span style="color:#e6db74">&#39;ens4&#39;</span>
+    <span style="color:#ae81ff">1</span> 0.000000000 192.168.18.15 → 192.168.18.42 TCP <span style="color:#ae81ff">74</span> <span style="color:#ae81ff">57748</span> → <span style="color:#ae81ff">8080</span> <span style="color:#f92672">[</span>SYN<span style="color:#f92672">]</span> Seq<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> Win<span style="color:#f92672">=</span><span style="color:#ae81ff">64240</span> Len<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> MSS<span style="color:#f92672">=</span><span style="color:#ae81ff">1460</span> SACK_PERM<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span> TSval<span style="color:#f92672">=</span><span style="color:#ae81ff">3012735747</span> TSecr<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> WS<span style="color:#f92672">=</span><span style="color:#ae81ff">128</span>
+    <span style="color:#ae81ff">2</span> 0.003030878 192.168.18.42 → 192.168.18.15 TCP <span style="color:#ae81ff">74</span> <span style="color:#ae81ff">8080</span> → <span style="color:#ae81ff">57748</span> <span style="color:#f92672">[</span>SYN, ACK<span style="color:#f92672">]</span> Seq<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> Ack<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span> Win<span style="color:#f92672">=</span><span style="color:#ae81ff">65160</span> Len<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> MSS<span style="color:#f92672">=</span><span style="color:#ae81ff">1460</span> SACK_PERM<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span> TSval<span style="color:#f92672">=</span><span style="color:#ae81ff">2089864125</span> TSecr<span style="color:#f92672">=</span><span style="color:#ae81ff">3012735747</span> WS<span style="color:#f92672">=</span><span style="color:#ae81ff">128</span>
+    <span style="color:#ae81ff">3</span> 0.003105138 192.168.18.15 → 192.168.18.42 TCP <span style="color:#ae81ff">66</span> <span style="color:#ae81ff">57748</span> → <span style="color:#ae81ff">8080</span> <span style="color:#f92672">[</span>ACK<span style="color:#f92672">]</span> Seq<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span> Ack<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span> Win<span style="color:#f92672">=</span><span style="color:#ae81ff">64256</span> Len<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> TSval<span style="color:#f92672">=</span><span style="color:#ae81ff">3012735750</span> TSecr<span style="color:#f92672">=</span><span style="color:#ae81ff">2089864125</span>
+    <span style="color:#ae81ff">4</span> 0.003279033 192.168.18.15 → 192.168.18.42 HTTP <span style="color:#ae81ff">148</span> GET / HTTP/1.1
+    <span style="color:#ae81ff">5</span> 0.003997128 192.168.18.42 → 192.168.18.15 TCP <span style="color:#ae81ff">66</span> <span style="color:#ae81ff">8080</span> → <span style="color:#ae81ff">57748</span> <span style="color:#f92672">[</span>ACK<span style="color:#f92672">]</span> Seq<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span> Ack<span style="color:#f92672">=</span><span style="color:#ae81ff">83</span> Win<span style="color:#f92672">=</span><span style="color:#ae81ff">65152</span> Len<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> TSval<span style="color:#f92672">=</span><span style="color:#ae81ff">2089864126</span> TSecr<span style="color:#f92672">=</span><span style="color:#ae81ff">3012735750</span>
+    <span style="color:#ae81ff">6</span> 0.004969762 192.168.18.42 → 192.168.18.15 TCP <span style="color:#ae81ff">250</span> HTTP/1.0 <span style="color:#ae81ff">200</span> OK  <span style="color:#f92672">[</span>TCP segment of a reassembled PDU<span style="color:#f92672">]</span>
+    <span style="color:#ae81ff">7</span> 0.004987076 192.168.18.15 → 192.168.18.42 TCP <span style="color:#ae81ff">66</span> <span style="color:#ae81ff">57748</span> → <span style="color:#ae81ff">8080</span> <span style="color:#f92672">[</span>ACK<span style="color:#f92672">]</span> Seq<span style="color:#f92672">=</span><span style="color:#ae81ff">83</span> Ack<span style="color:#f92672">=</span><span style="color:#ae81ff">185</span> Win<span style="color:#f92672">=</span><span style="color:#ae81ff">64128</span> Len<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> TSval<span style="color:#f92672">=</span><span style="color:#ae81ff">3012735752</span> TSecr<span style="color:#f92672">=</span><span style="color:#ae81ff">2089864127</span>
+    <span style="color:#ae81ff">8</span> 0.005108794 192.168.18.42 → 192.168.18.15 HTTP <span style="color:#ae81ff">94</span> HTTP/1.0 <span style="color:#ae81ff">200</span> OK  <span style="color:#f92672">(</span>text/html<span style="color:#f92672">)</span>
+    <span style="color:#ae81ff">9</span> 0.005142854 192.168.18.13 → 192.168.18.15 SSH <span style="color:#ae81ff">166</span> Server: Encrypted packet <span style="color:#f92672">(</span>len<span style="color:#f92672">=</span>100<span style="color:#f92672">)</span>
+   <span style="color:#ae81ff">10</span> 0.005154296 192.168.18.15 → 192.168.18.13 TCP <span style="color:#ae81ff">66</span> <span style="color:#ae81ff">53974</span> → <span style="color:#ae81ff">22</span> <span style="color:#f92672">[</span>ACK<span style="color:#f92672">]</span> Seq<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span> Ack<span style="color:#f92672">=</span><span style="color:#ae81ff">101</span> Win<span style="color:#f92672">=</span><span style="color:#ae81ff">1283</span> Len<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> TSval<span style="color:#f92672">=</span><span style="color:#ae81ff">101857741</span> TSecr<span style="color:#f92672">=</span><span style="color:#ae81ff">2089864127</span>
+   <span style="color:#ae81ff">11</span> 0.005243331 192.168.18.13 → 192.168.18.15 SSH <span style="color:#ae81ff">102</span> Server: Encrypted packet <span style="color:#f92672">(</span>len<span style="color:#f92672">=</span>36<span style="color:#f92672">)</span>
+   <span style="color:#ae81ff">12</span> 0.005251227 192.168.18.15 → 192.168.18.13 TCP <span style="color:#ae81ff">66</span> <span style="color:#ae81ff">53974</span> → <span style="color:#ae81ff">22</span> <span style="color:#f92672">[</span>ACK<span style="color:#f92672">]</span> Seq<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span> Ack<span style="color:#f92672">=</span><span style="color:#ae81ff">137</span> Win<span style="color:#f92672">=</span><span style="color:#ae81ff">1283</span> Len<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> TSval<span style="color:#f92672">=</span><span style="color:#ae81ff">101857741</span> TSecr<span style="color:#f92672">=</span><span style="color:#ae81ff">2089864127</span>
+   <span style="color:#ae81ff">13</span> 0.005969075 192.168.18.15 → 192.168.18.42 TCP <span style="color:#ae81ff">66</span> <span style="color:#ae81ff">57748</span> → <span style="color:#ae81ff">8080</span> <span style="color:#f92672">[</span>FIN, ACK<span style="color:#f92672">]</span> Seq<span style="color:#f92672">=</span><span style="color:#ae81ff">83</span> Ack<span style="color:#f92672">=</span><span style="color:#ae81ff">214</span> Win<span style="color:#f92672">=</span><span style="color:#ae81ff">64128</span> Len<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> TSval<span style="color:#f92672">=</span><span style="color:#ae81ff">3012735753</span> TSecr<span style="color:#f92672">=</span><span style="color:#ae81ff">2089864127</span>
+   <span style="color:#ae81ff">14</span> 0.006670183 192.168.18.42 → 192.168.18.15 TCP <span style="color:#ae81ff">66</span> <span style="color:#ae81ff">8080</span> → <span style="color:#ae81ff">57748</span> <span style="color:#f92672">[</span>ACK<span style="color:#f92672">]</span> Seq<span style="color:#f92672">=</span><span style="color:#ae81ff">214</span> Ack<span style="color:#f92672">=</span><span style="color:#ae81ff">84</span> Win<span style="color:#f92672">=</span><span style="color:#ae81ff">65152</span> Len<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> TSval<span style="color:#f92672">=</span><span style="color:#ae81ff">2089864129</span> TSecr<span style="color:#f92672">=</span><span style="color:#ae81ff">3012735753</span>
+   <span style="color:#ae81ff">15</span> 1.198771641 192.168.18.15 → 192.168.18.42 TCP <span style="color:#ae81ff">74</span> <span style="color:#ae81ff">57750</span> → <span style="color:#ae81ff">8080</span> <span style="color:#f92672">[</span>SYN<span style="color:#f92672">]</span> Seq<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> Win<span style="color:#f92672">=</span><span style="color:#ae81ff">64240</span> Len<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> MSS<span style="color:#f92672">=</span><span style="color:#ae81ff">1460</span> SACK_PERM<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span> TSval<span style="color:#f92672">=</span><span style="color:#ae81ff">3012736946</span> TSecr<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> WS<span style="color:#f92672">=</span><span style="color:#ae81ff">128</span>
+   <span style="color:#ae81ff">16</span> 1.200521075 192.168.18.42 → 192.168.18.15 TCP <span style="color:#ae81ff">74</span> <span style="color:#ae81ff">8080</span> → <span style="color:#ae81ff">57750</span> <span style="color:#f92672">[</span>SYN, ACK<span style="color:#f92672">]</span> Seq<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> Ack<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span> Win<span style="color:#f92672">=</span><span style="color:#ae81ff">65160</span> Len<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> MSS<span style="color:#f92672">=</span><span style="color:#ae81ff">1460</span> SACK_PERM<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span> TSval<span style="color:#f92672">=</span><span style="color:#ae81ff">114231913</span> TSecr<span style="color:#f92672">=</span><span style="color:#ae81ff">3012736946</span> WS<span style="color:#f92672">=</span><span style="color:#ae81ff">128</span>
+   <span style="color:#ae81ff">17</span> 1.200583756 192.168.18.15 → 192.168.18.42 TCP <span style="color:#ae81ff">66</span> <span style="color:#ae81ff">57750</span> → <span style="color:#ae81ff">8080</span> <span style="color:#f92672">[</span>ACK<span style="color:#f92672">]</span> Seq<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span> Ack<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span> Win<span style="color:#f92672">=</span><span style="color:#ae81ff">64256</span> Len<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> TSval<span style="color:#f92672">=</span><span style="color:#ae81ff">3012736948</span> TSecr<span style="color:#f92672">=</span><span style="color:#ae81ff">114231913</span>
+   <span style="color:#ae81ff">18</span> 1.200708799 192.168.18.15 → 192.168.18.42 HTTP <span style="color:#ae81ff">148</span> GET / HTTP/1.1
+   <span style="color:#ae81ff">19</span> 1.201302648 192.168.18.42 → 192.168.18.15 TCP <span style="color:#ae81ff">66</span> <span style="color:#ae81ff">8080</span> → <span style="color:#ae81ff">57750</span> <span style="color:#f92672">[</span>ACK<span style="color:#f92672">]</span> Seq<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span> Ack<span style="color:#f92672">=</span><span style="color:#ae81ff">83</span> Win<span style="color:#f92672">=</span><span style="color:#ae81ff">65152</span> Len<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> TSval<span style="color:#f92672">=</span><span style="color:#ae81ff">114231914</span> TSecr<span style="color:#f92672">=</span><span style="color:#ae81ff">3012736948</span>
+   <span style="color:#ae81ff">20</span> 1.202135411 192.168.18.42 → 192.168.18.15 TCP <span style="color:#ae81ff">250</span> HTTP/1.0 <span style="color:#ae81ff">200</span> OK  <span style="color:#f92672">[</span>TCP segment of a reassembled PDU<span style="color:#f92672">]</span>
+   <span style="color:#ae81ff">21</span> 1.202156693 192.168.18.15 → 192.168.18.42 TCP <span style="color:#ae81ff">66</span> <span style="color:#ae81ff">57750</span> → <span style="color:#ae81ff">8080</span> <span style="color:#f92672">[</span>ACK<span style="color:#f92672">]</span> Seq<span style="color:#f92672">=</span><span style="color:#ae81ff">83</span> Ack<span style="color:#f92672">=</span><span style="color:#ae81ff">185</span> Win<span style="color:#f92672">=</span><span style="color:#ae81ff">64128</span> Len<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> TSval<span style="color:#f92672">=</span><span style="color:#ae81ff">3012736949</span> TSecr<span style="color:#f92672">=</span><span style="color:#ae81ff">114231915</span>
+   <span style="color:#ae81ff">22</span> 1.202224456 192.168.18.42 → 192.168.18.15 HTTP <span style="color:#ae81ff">94</span> HTTP/1.0 <span style="color:#ae81ff">200</span> OK  <span style="color:#f92672">(</span>text/html<span style="color:#f92672">)</span>
+   <span style="color:#ae81ff">23</span> 1.202408064 192.168.18.11 → 192.168.18.15 SSH <span style="color:#ae81ff">166</span> Server: Encrypted packet <span style="color:#f92672">(</span>len<span style="color:#f92672">=</span>100<span style="color:#f92672">)</span>
+   <span style="color:#ae81ff">24</span> 1.202421700 192.168.18.15 → 192.168.18.11 TCP <span style="color:#ae81ff">66</span> <span style="color:#ae81ff">49296</span> → <span style="color:#ae81ff">22</span> <span style="color:#f92672">[</span>ACK<span style="color:#f92672">]</span> Seq<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span> Ack<span style="color:#f92672">=</span><span style="color:#ae81ff">101</span> Win<span style="color:#f92672">=</span><span style="color:#ae81ff">501</span> Len<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> TSval<span style="color:#f92672">=</span><span style="color:#ae81ff">1889704740</span> TSecr<span style="color:#f92672">=</span><span style="color:#ae81ff">114231916</span>
+   <span style="color:#ae81ff">25</span> 1.203001046 192.168.18.15 → 192.168.18.42 TCP <span style="color:#ae81ff">66</span> <span style="color:#ae81ff">57750</span> → <span style="color:#ae81ff">8080</span> <span style="color:#f92672">[</span>FIN, ACK<span style="color:#f92672">]</span> Seq<span style="color:#f92672">=</span><span style="color:#ae81ff">83</span> Ack<span style="color:#f92672">=</span><span style="color:#ae81ff">214</span> Win<span style="color:#f92672">=</span><span style="color:#ae81ff">64128</span> Len<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> TSval<span style="color:#f92672">=</span><span style="color:#ae81ff">3012736950</span> TSecr<span style="color:#f92672">=</span><span style="color:#ae81ff">114231915</span>
+   <span style="color:#ae81ff">26</span> 1.203488893 192.168.18.42 → 192.168.18.15 TCP <span style="color:#ae81ff">66</span> <span style="color:#ae81ff">8080</span> → <span style="color:#ae81ff">57750</span> <span style="color:#f92672">[</span>ACK<span style="color:#f92672">]</span> Seq<span style="color:#f92672">=</span><span style="color:#ae81ff">214</span> Ack<span style="color:#f92672">=</span><span style="color:#ae81ff">84</span> Win<span style="color:#f92672">=</span><span style="color:#ae81ff">65152</span> Len<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> TSval<span style="color:#f92672">=</span><span style="color:#ae81ff">114231917</span> TSecr<span style="color:#f92672">=</span><span style="color:#ae81ff">3012736950</span>
+   <span style="color:#ae81ff">27</span> 2.182815052 192.168.18.8 → 224.0.0.81   IPVS <span style="color:#ae81ff">194</span>
+   <span style="color:#ae81ff">28</span> 5.172601317 fa:16:3e:f7:bd:15 → fa:16:3e:37:85:05 ARP <span style="color:#ae81ff">42</span> Who has 192.168.18.13? Tell 192.168.18.15
+   <span style="color:#ae81ff">29</span> 5.174174625 fa:16:3e:37:85:05 → fa:16:3e:f7:bd:15 ARP <span style="color:#ae81ff">42</span> 192.168.18.13 is at fa:16:3e:37:85:05
+   <span style="color:#ae81ff">30</span> 6.377310556 fa:16:3e:0c:1e:a0 → fa:16:3e:f7:bd:15 ARP <span style="color:#ae81ff">42</span> Who has 192.168.18.15? Tell 192.168.18.11
+   <span style="color:#ae81ff">31</span> 6.377352752 fa:16:3e:f7:bd:15 → fa:16:3e:0c:1e:a0 ARP <span style="color:#ae81ff">42</span> 192.168.18.15 is at fa:16:3e:f7:bd:15
+   <span style="color:#ae81ff">32</span> 6.452604770 fa:16:3e:f7:bd:15 → fa:16:3e:0c:1e:a0 ARP <span style="color:#ae81ff">42</span> Who has 192.168.18.11? Tell 192.168.18.15
+   <span style="color:#ae81ff">33</span> 6.453102294 fa:16:3e:0c:1e:a0 → fa:16:3e:f7:bd:15 ARP <span style="color:#ae81ff">42</span> 192.168.18.11 is at fa:16:3e:0c:1e:a0
+   <span style="color:#ae81ff">33</span> packets captured
+</code></pre></div><p>tshark on LB1 (one-directional traffic)</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">ubuntu@voje-test-lb:~$ sudo tshark -i ens3
+Running as user <span style="color:#e6db74">&#34;root&#34;</span> and group <span style="color:#e6db74">&#34;root&#34;</span>. This could be dangerous.
+Capturing on <span style="color:#e6db74">&#39;ens3&#39;</span>
+    <span style="color:#ae81ff">1</span> 0.000000000 192.168.18.15 → 192.168.18.42 TCP <span style="color:#ae81ff">74</span> <span style="color:#ae81ff">57748</span> → <span style="color:#ae81ff">8080</span> <span style="color:#f92672">[</span>SYN<span style="color:#f92672">]</span> Seq<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> Win<span style="color:#f92672">=</span><span style="color:#ae81ff">64240</span> Len<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> MSS<span style="color:#f92672">=</span><span style="color:#ae81ff">1460</span> SACK_PERM<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span> TSval<span style="color:#f92672">=</span><span style="color:#ae81ff">3012735747</span> TSecr<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> WS<span style="color:#f92672">=</span><span style="color:#ae81ff">128</span>
+    <span style="color:#ae81ff">2</span> 0.000027288 192.168.18.15 → 192.168.18.42 TCP <span style="color:#ae81ff">74</span> <span style="color:#f92672">[</span>TCP Out-Of-Order<span style="color:#f92672">]</span> <span style="color:#ae81ff">57748</span> → <span style="color:#ae81ff">8080</span> <span style="color:#f92672">[</span>SYN<span style="color:#f92672">]</span> Seq<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> Win<span style="color:#f92672">=</span><span style="color:#ae81ff">64240</span> Len<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> MSS<span style="color:#f92672">=</span><span style="color:#ae81ff">1460</span> SACK_PERM<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span> TSval<span style="color:#f92672">=</span><span style="color:#ae81ff">3012735747</span> TSecr<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> WS<span style="color:#f92672">=</span><span style="color:#ae81ff">128</span>
+    <span style="color:#ae81ff">3</span> 0.002421007 192.168.18.15 → 192.168.18.42 TCP <span style="color:#ae81ff">66</span> <span style="color:#ae81ff">57748</span> → <span style="color:#ae81ff">8080</span> <span style="color:#f92672">[</span>ACK<span style="color:#f92672">]</span> Seq<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span> Ack<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span> Win<span style="color:#f92672">=</span><span style="color:#ae81ff">64256</span> Len<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> TSval<span style="color:#f92672">=</span><span style="color:#ae81ff">3012735750</span> TSecr<span style="color:#f92672">=</span><span style="color:#ae81ff">2089864125</span>
+    <span style="color:#ae81ff">4</span> 0.002443634 192.168.18.15 → 192.168.18.42 TCP <span style="color:#ae81ff">66</span> <span style="color:#f92672">[</span>TCP Dup ACK 3#1<span style="color:#f92672">]</span> <span style="color:#ae81ff">57748</span> → <span style="color:#ae81ff">8080</span> <span style="color:#f92672">[</span>ACK<span style="color:#f92672">]</span> Seq<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span> Ack<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span> Win<span style="color:#f92672">=</span><span style="color:#ae81ff">64256</span> Len<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> TSval<span style="color:#f92672">=</span><span style="color:#ae81ff">3012735750</span> TSecr<span style="color:#f92672">=</span><span style="color:#ae81ff">2089864125</span>
+    <span style="color:#ae81ff">5</span> 0.002572930 192.168.18.15 → 192.168.18.42 HTTP <span style="color:#ae81ff">148</span> GET / HTTP/1.1
+    <span style="color:#ae81ff">6</span> 0.002580217 192.168.18.15 → 192.168.18.42 TCP <span style="color:#ae81ff">148</span> <span style="color:#f92672">[</span>TCP Retransmission<span style="color:#f92672">]</span> <span style="color:#ae81ff">57748</span> → <span style="color:#ae81ff">8080</span> <span style="color:#f92672">[</span>PSH, ACK<span style="color:#f92672">]</span> Seq<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span> Ack<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span> Win<span style="color:#f92672">=</span><span style="color:#ae81ff">64256</span> Len<span style="color:#f92672">=</span><span style="color:#ae81ff">82</span> TSval<span style="color:#f92672">=</span><span style="color:#ae81ff">3012735750</span> TSecr<span style="color:#f92672">=</span><span style="color:#ae81ff">2089864125</span>
+    <span style="color:#ae81ff">7</span> 0.004282543 192.168.18.15 → 192.168.18.42 TCP <span style="color:#ae81ff">66</span> <span style="color:#ae81ff">57748</span> → <span style="color:#ae81ff">8080</span> <span style="color:#f92672">[</span>ACK<span style="color:#f92672">]</span> Seq<span style="color:#f92672">=</span><span style="color:#ae81ff">83</span> Ack<span style="color:#f92672">=</span><span style="color:#ae81ff">185</span> Win<span style="color:#f92672">=</span><span style="color:#ae81ff">64128</span> Len<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> TSval<span style="color:#f92672">=</span><span style="color:#ae81ff">3012735752</span> TSecr<span style="color:#f92672">=</span><span style="color:#ae81ff">2089864127</span>
+    <span style="color:#ae81ff">8</span> 0.004289545 192.168.18.15 → 192.168.18.42 TCP <span style="color:#ae81ff">66</span> <span style="color:#f92672">[</span>TCP Dup ACK 7#1<span style="color:#f92672">]</span> <span style="color:#ae81ff">57748</span> → <span style="color:#ae81ff">8080</span> <span style="color:#f92672">[</span>ACK<span style="color:#f92672">]</span> Seq<span style="color:#f92672">=</span><span style="color:#ae81ff">83</span> Ack<span style="color:#f92672">=</span><span style="color:#ae81ff">185</span> Win<span style="color:#f92672">=</span><span style="color:#ae81ff">64128</span> Len<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> TSval<span style="color:#f92672">=</span><span style="color:#ae81ff">3012735752</span> TSecr<span style="color:#f92672">=</span><span style="color:#ae81ff">2089864127</span>
+    <span style="color:#ae81ff">9</span> 0.005268132 192.168.18.15 → 192.168.18.42 TCP <span style="color:#ae81ff">66</span> <span style="color:#ae81ff">57748</span> → <span style="color:#ae81ff">8080</span> <span style="color:#f92672">[</span>FIN, ACK<span style="color:#f92672">]</span> Seq<span style="color:#f92672">=</span><span style="color:#ae81ff">83</span> Ack<span style="color:#f92672">=</span><span style="color:#ae81ff">214</span> Win<span style="color:#f92672">=</span><span style="color:#ae81ff">64128</span> Len<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> TSval<span style="color:#f92672">=</span><span style="color:#ae81ff">3012735753</span> TSecr<span style="color:#f92672">=</span><span style="color:#ae81ff">2089864127</span>
+   <span style="color:#ae81ff">10</span> 0.005275033 192.168.18.15 → 192.168.18.42 TCP <span style="color:#ae81ff">66</span> <span style="color:#f92672">[</span>TCP Out-Of-Order<span style="color:#f92672">]</span> <span style="color:#ae81ff">57748</span> → <span style="color:#ae81ff">8080</span> <span style="color:#f92672">[</span>FIN, ACK<span style="color:#f92672">]</span> Seq<span style="color:#f92672">=</span><span style="color:#ae81ff">83</span> Ack<span style="color:#f92672">=</span><span style="color:#ae81ff">214</span> Win<span style="color:#f92672">=</span><span style="color:#ae81ff">64128</span> Len<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> TSval<span style="color:#f92672">=</span><span style="color:#ae81ff">3012735753</span> TSecr<span style="color:#f92672">=</span><span style="color:#ae81ff">2089864127</span>
+   <span style="color:#ae81ff">11</span> 1.198180488 192.168.18.15 → 192.168.18.42 TCP <span style="color:#ae81ff">74</span> <span style="color:#ae81ff">57750</span> → <span style="color:#ae81ff">8080</span> <span style="color:#f92672">[</span>SYN<span style="color:#f92672">]</span> Seq<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> Win<span style="color:#f92672">=</span><span style="color:#ae81ff">64240</span> Len<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> MSS<span style="color:#f92672">=</span><span style="color:#ae81ff">1460</span> SACK_PERM<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span> TSval<span style="color:#f92672">=</span><span style="color:#ae81ff">3012736946</span> TSecr<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> WS<span style="color:#f92672">=</span><span style="color:#ae81ff">128</span>
+   <span style="color:#ae81ff">12</span> 1.198220933 192.168.18.15 → 192.168.18.42 TCP <span style="color:#ae81ff">74</span> <span style="color:#f92672">[</span>TCP Out-Of-Order<span style="color:#f92672">]</span> <span style="color:#ae81ff">57750</span> → <span style="color:#ae81ff">8080</span> <span style="color:#f92672">[</span>SYN<span style="color:#f92672">]</span> Seq<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> Win<span style="color:#f92672">=</span><span style="color:#ae81ff">64240</span> Len<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> MSS<span style="color:#f92672">=</span><span style="color:#ae81ff">1460</span> SACK_PERM<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span> TSval<span style="color:#f92672">=</span><span style="color:#ae81ff">3012736946</span> TSecr<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> WS<span style="color:#f92672">=</span><span style="color:#ae81ff">128</span>
+   <span style="color:#ae81ff">13</span> 1.199833857 192.168.18.15 → 192.168.18.42 TCP <span style="color:#ae81ff">66</span> <span style="color:#ae81ff">57750</span> → <span style="color:#ae81ff">8080</span> <span style="color:#f92672">[</span>ACK<span style="color:#f92672">]</span> Seq<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span> Ack<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span> Win<span style="color:#f92672">=</span><span style="color:#ae81ff">64256</span> Len<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> TSval<span style="color:#f92672">=</span><span style="color:#ae81ff">3012736948</span> TSecr<span style="color:#f92672">=</span><span style="color:#ae81ff">114231913</span>
+   <span style="color:#ae81ff">14</span> 1.199845239 192.168.18.15 → 192.168.18.42 TCP <span style="color:#ae81ff">66</span> <span style="color:#f92672">[</span>TCP Dup ACK 13#1<span style="color:#f92672">]</span> <span style="color:#ae81ff">57750</span> → <span style="color:#ae81ff">8080</span> <span style="color:#f92672">[</span>ACK<span style="color:#f92672">]</span> Seq<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span> Ack<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span> Win<span style="color:#f92672">=</span><span style="color:#ae81ff">64256</span> Len<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> TSval<span style="color:#f92672">=</span><span style="color:#ae81ff">3012736948</span> TSecr<span style="color:#f92672">=</span><span style="color:#ae81ff">114231913</span>
+   <span style="color:#ae81ff">15</span> 1.199953771 192.168.18.15 → 192.168.18.42 HTTP <span style="color:#ae81ff">148</span> GET / HTTP/1.1
+   <span style="color:#ae81ff">16</span> 1.199958876 192.168.18.15 → 192.168.18.42 TCP <span style="color:#ae81ff">148</span> <span style="color:#f92672">[</span>TCP Retransmission<span style="color:#f92672">]</span> <span style="color:#ae81ff">57750</span> → <span style="color:#ae81ff">8080</span> <span style="color:#f92672">[</span>PSH, ACK<span style="color:#f92672">]</span> Seq<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span> Ack<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span> Win<span style="color:#f92672">=</span><span style="color:#ae81ff">64256</span> Len<span style="color:#f92672">=</span><span style="color:#ae81ff">82</span> TSval<span style="color:#f92672">=</span><span style="color:#ae81ff">3012736948</span> TSecr<span style="color:#f92672">=</span><span style="color:#ae81ff">114231913</span>
+   <span style="color:#ae81ff">17</span> 1.201486687 192.168.18.15 → 192.168.18.42 TCP <span style="color:#ae81ff">66</span> <span style="color:#ae81ff">57750</span> → <span style="color:#ae81ff">8080</span> <span style="color:#f92672">[</span>ACK<span style="color:#f92672">]</span> Seq<span style="color:#f92672">=</span><span style="color:#ae81ff">83</span> Ack<span style="color:#f92672">=</span><span style="color:#ae81ff">185</span> Win<span style="color:#f92672">=</span><span style="color:#ae81ff">64128</span> Len<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> TSval<span style="color:#f92672">=</span><span style="color:#ae81ff">3012736949</span> TSecr<span style="color:#f92672">=</span><span style="color:#ae81ff">114231915</span>
+   <span style="color:#ae81ff">18</span> 1.201492492 192.168.18.15 → 192.168.18.42 TCP <span style="color:#ae81ff">66</span> <span style="color:#f92672">[</span>TCP Dup ACK 17#1<span style="color:#f92672">]</span> <span style="color:#ae81ff">57750</span> → <span style="color:#ae81ff">8080</span> <span style="color:#f92672">[</span>ACK<span style="color:#f92672">]</span> Seq<span style="color:#f92672">=</span><span style="color:#ae81ff">83</span> Ack<span style="color:#f92672">=</span><span style="color:#ae81ff">185</span> Win<span style="color:#f92672">=</span><span style="color:#ae81ff">64128</span> Len<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> TSval<span style="color:#f92672">=</span><span style="color:#ae81ff">3012736949</span> TSecr<span style="color:#f92672">=</span><span style="color:#ae81ff">114231915</span>
+   <span style="color:#ae81ff">19</span> 1.202248090 192.168.18.15 → 192.168.18.42 TCP <span style="color:#ae81ff">66</span> <span style="color:#ae81ff">57750</span> → <span style="color:#ae81ff">8080</span> <span style="color:#f92672">[</span>FIN, ACK<span style="color:#f92672">]</span> Seq<span style="color:#f92672">=</span><span style="color:#ae81ff">83</span> Ack<span style="color:#f92672">=</span><span style="color:#ae81ff">214</span> Win<span style="color:#f92672">=</span><span style="color:#ae81ff">64128</span> Len<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> TSval<span style="color:#f92672">=</span><span style="color:#ae81ff">3012736950</span> TSecr<span style="color:#f92672">=</span><span style="color:#ae81ff">114231915</span>
+   <span style="color:#ae81ff">20</span> 1.202253023 192.168.18.15 → 192.168.18.42 TCP <span style="color:#ae81ff">66</span> <span style="color:#f92672">[</span>TCP Out-Of-Order<span style="color:#f92672">]</span> <span style="color:#ae81ff">57750</span> → <span style="color:#ae81ff">8080</span> <span style="color:#f92672">[</span>FIN, ACK<span style="color:#f92672">]</span> Seq<span style="color:#f92672">=</span><span style="color:#ae81ff">83</span> Ack<span style="color:#f92672">=</span><span style="color:#ae81ff">214</span> Win<span style="color:#f92672">=</span><span style="color:#ae81ff">64128</span> Len<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span> TSval<span style="color:#f92672">=</span><span style="color:#ae81ff">3012736950</span> TSecr<span style="color:#f92672">=</span><span style="color:#ae81ff">114231915</span>
+   <span style="color:#ae81ff">21</span> 2.180436156 192.168.18.8 → 224.0.0.81   IPVS <span style="color:#ae81ff">194</span>
+
+<span style="color:#ae81ff">21</span> packets capture
+</code></pre></div><p>ARP tables on client look healthy after a few flushes (.42 should route to LB&rsquo;s MAC).</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">ubuntu@voje-test-client:~$ arp -n
+Address                  HWtype  HWaddress           Flags Mask            Iface
+192.168.18.8             ether   fa:16:3e:ab:32:34   C                     ens4
+192.168.18.11            ether   fa:16:3e:0c:1e:a0   C                     ens4
+192.168.18.13            ether   fa:16:3e:37:85:05   C                     ens4
+192.168.18.42            ether   fa:16:3e:ab:32:34   C                     ens4
+</code></pre></div><h2 id="todo">TODO<a href="#todo" class="hanchor" ariaLabel="Anchor">&#8983;</a> </h2>
+<p>some more testing, install tshark on BS1,2.</p>
+
+      </div></div>
+
+  
+  
+  
+
+  
+
+</div>
+
+  </div>
+
+  
+    <footer class="footer">
+  <div class="footer__inner">
+    
+      <div class="copyright copyright--user">
+        <span>Kristjan Voje 2021</span>
+    
+        <span>:: Theme made by <a href="https://twitter.com/panr">panr</a></span>
+      </div>
+  </div>
+</footer>
+
+<script src="https://voje.github.io/blog/assets/main.js"></script>
+<script src="https://voje.github.io/blog/assets/prism.js"></script>
+
+
+
+
+
+
+
+  
+</div>
+
+</body>
+</html>

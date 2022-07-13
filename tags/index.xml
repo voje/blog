@@ -7,7 +7,56 @@
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
     <copyright>Kristjan Voje 2021</copyright>
-    <lastBuildDate>Mon, 18 Jan 2021 23:04:03 +0100</lastBuildDate><atom:link href="https://voje.github.io/blog/tags/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Wed, 13 Jul 2022 15:29:50 +0200</lastBuildDate>
+    
+	<atom:link href="https://voje.github.io/blog/tags/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>boot</title>
+      <link>https://voje.github.io/blog/tags/boot/</link>
+      <pubDate>Wed, 13 Jul 2022 15:29:50 +0200</pubDate>
+      
+      <guid>https://voje.github.io/blog/tags/boot/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>coreos</title>
+      <link>https://voje.github.io/blog/tags/coreos/</link>
+      <pubDate>Wed, 13 Jul 2022 15:29:50 +0200</pubDate>
+      
+      <guid>https://voje.github.io/blog/tags/coreos/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>pxe</title>
+      <link>https://voje.github.io/blog/tags/pxe/</link>
+      <pubDate>Wed, 13 Jul 2022 15:29:50 +0200</pubDate>
+      
+      <guid>https://voje.github.io/blog/tags/pxe/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>redhat</title>
+      <link>https://voje.github.io/blog/tags/redhat/</link>
+      <pubDate>Wed, 13 Jul 2022 15:29:50 +0200</pubDate>
+      
+      <guid>https://voje.github.io/blog/tags/redhat/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>rhcos</title>
+      <link>https://voje.github.io/blog/tags/rhcos/</link>
+      <pubDate>Wed, 13 Jul 2022 15:29:50 +0200</pubDate>
+      
+      <guid>https://voje.github.io/blog/tags/rhcos/</guid>
+      <description></description>
+    </item>
+    
     <item>
       <title>direct return</title>
       <link>https://voje.github.io/blog/tags/direct-return/</link>

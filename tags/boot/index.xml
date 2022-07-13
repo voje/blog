@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Posts on Blog</title>
-    <link>https://voje.github.io/blog/posts/</link>
-    <description>Recent content in Posts on Blog</description>
+    <title>boot on Blog</title>
+    <link>https://voje.github.io/blog/tags/boot/</link>
+    <description>Recent content in boot on Blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
     <copyright>Kristjan Voje 2021</copyright>
     <lastBuildDate>Wed, 13 Jul 2022 15:29:50 +0200</lastBuildDate>
     
-	<atom:link href="https://voje.github.io/blog/posts/index.xml" rel="self" type="application/rss+xml" />
+	<atom:link href="https://voje.github.io/blog/tags/boot/index.xml" rel="self" type="application/rss+xml" />
     
     
     <item>
@@ -21,18 +21,6 @@
       <description>KVM RHCOS PXE Boot We will create a KVM network called mylab and launch a RHCOS instance using PXE boot. We will use KVM&amp;rsquo;s integrated DHCP and TFTP server.
 Prerequisites:
  Linux system with kvm/libvirt installed (using Ubuntu 20.04 for this example). 3GB RAM for the VM.  Steps  Create a libvirt network with static DHCP and TFTP settings Download initramfs, kernel and rootfs Prepare a TFTP server for hosting initramfs (initrd.</description>
-    </item>
-    
-    <item>
-      <title>LVS DR</title>
-      <link>https://voje.github.io/blog/posts/lvs-dr/</link>
-      <pubDate>Mon, 18 Jan 2021 23:04:03 +0100</pubDate>
-      
-      <guid>https://voje.github.io/blog/posts/lvs-dr/</guid>
-      <description>LVS DR Linux Virtual Server Direct Return
-We&amp;rsquo;re using a four server scenario: client, load balancer, backend server 1, backend server 2.
-Lost an hour trying to get ansible.openstack to work&amp;hellip; not sure why the error feedback is so slow but ended up using bash instead.
-2029 for server in $(openstack server list | grep voje-test | awk &amp;#39;{ print $4 }&amp;#39;); do echo $server; openstack server delete $server; done 2031 openstack server create --image focal-server-cloudimg-2021-01-05.</description>
     </item>
     
   </channel>

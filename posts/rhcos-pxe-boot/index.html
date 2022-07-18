@@ -274,7 +274,24 @@ server <span style="color:#f92672">{</span>
 </code></pre></div><p>The above command will get us to the login screen.<br>
 We won&rsquo;t be able to login though - for that we need to configure COREOS with
 an <code>ignition</code> file (out of scope for this demo).</p>
-<h2 id="sources">Sources<a href="#sources" class="hanchor" ariaLabel="Anchor">&#8983;</a> </h2>
+<h2 id="bonus-ignition">Bonus: Ignition<a href="#bonus-ignition" class="hanchor" ariaLabel="Anchor">&#8983;</a> </h2>
+<p>We can configure a COREOS machine at boot using Ignition.<br>
+Generate an Ignition file, place it on your HTTP server (alongside rootfs), then
+add the following boot arguments to your PXE config:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash"><span style="color:#75715e"># pxelinux.cfg/default</span> 
+DEFAULT menu.c32
+PROMPT <span style="color:#ae81ff">0</span>
+
+MENU TITLE <span style="color:#75715e">### MyLab boot menu ###</span>
+MENU AUTOBOOT Starting SuperOS in <span style="color:#75715e"># seconds</span>
+TIMEOUT <span style="color:#ae81ff">5</span>
+TOTALTIMEOUT <span style="color:#ae81ff">10</span>
+ONTIMEOUT local
+
+LABEL local
+  KERNEL rhcos/vmlinuz
+  APPEND initrd<span style="color:#f92672">=</span>rhcos/initrd.img ip<span style="color:#f92672">=</span>dhcp coreos.live.rootfs_url<span style="color:#f92672">=</span>http://192.168.132.1:8080/rhcos/rhcos-live-rootfs.x86_64.img ignition.config.url<span style="color:#f92672">=</span>http://192.168.132.1:8080/ignition/bootstrap_test.ign ignition.firstboot ignition.platform.id<span style="color:#f92672">=</span>metal
+</code></pre></div><h2 id="sources">Sources<a href="#sources" class="hanchor" ariaLabel="Anchor">&#8983;</a> </h2>
 <ul>
 <li><a href="https://docs.fedoraproject.org/en-US/fedora-coreos/live-reference/">https://docs.fedoraproject.org/en-US/fedora-coreos/live-reference/</a></li>
 <li><a href="https://docs.openshift.com/container-platform/4.10/installing/installing_platform_agnostic/installing-platform-agnostic.html#installation-user-infra-machines-pxe_installing-platform-agnostic">https://docs.openshift.com/container-platform/4.10/installing/installing_platform_agnostic/installing-platform-agnostic.html#installation-user-infra-machines-pxe_installing-platform-agnostic</a></li>

@@ -161,6 +161,26 @@ The above command will get us to the login screen.
 We won't be able to login though - for that we need to configure COREOS with 
 an `ignition` file (out of scope for this demo).   
 
+## Bonus: Ignition
+We can configure a COREOS machine at boot using Ignition.   
+Generate an Ignition file, place it on your HTTP server (alongside rootfs), then 
+add the following boot arguments to your PXE config:
+```bash
+# pxelinux.cfg/default 
+DEFAULT menu.c32
+PROMPT 0
+
+MENU TITLE ### MyLab boot menu ###
+MENU AUTOBOOT Starting SuperOS in # seconds
+TIMEOUT 5
+TOTALTIMEOUT 10
+ONTIMEOUT local
+
+LABEL local
+  KERNEL rhcos/vmlinuz
+  APPEND initrd=rhcos/initrd.img ip=dhcp coreos.live.rootfs_url=http://192.168.132.1:8080/rhcos/rhcos-live-rootfs.x86_64.img ignition.config.url=http://192.168.132.1:8080/ignition/bootstrap_test.ign ignition.firstboot ignition.platform.id=metal
+```
+
 ## Sources
 * https://docs.fedoraproject.org/en-US/fedora-coreos/live-reference/
 * https://docs.openshift.com/container-platform/4.10/installing/installing_platform_agnostic/installing-platform-agnostic.html#installation-user-infra-machines-pxe_installing-platform-agnostic
